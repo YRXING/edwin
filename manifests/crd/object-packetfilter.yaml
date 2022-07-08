@@ -1,0 +1,8 @@
+apiVersion: edwin.k8s.io/v1
+kind: PacketFilter
+metadata:
+  name: pf-test
+spec:
+  cidr: "10.102.1.0/24"
+  port: "80"
+  rule: "deny"

@@ -84,3 +84,4 @@ struct bpf_map_def __section("maps") sock_ops_map = {
 	.max_entries    = 65535,
 	.map_flags      = 0,
 };
+
