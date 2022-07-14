@@ -15,7 +15,7 @@ type PacketFilter struct {
 }
 
 type PacketFilterSpec struct {
-	cidr   string `json:"cidr"`
+	cidr string `json:"cidr"`
 	port string `json:"port"`
 	rule string `json:"rule"`
 }

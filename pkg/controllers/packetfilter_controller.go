@@ -25,7 +25,7 @@ import (
 const controllerName = "packetfilter-controller"
 
 const (
-	SuccessSynced = "Synced"
+	SuccessSynced         = "Synced"
 	MessageResourceSynced = "PacketFilter synced successfully"
 )
 
@@ -43,10 +43,10 @@ type PacketFilterController struct {
 	recorder record.EventRecorder
 }
 
-// NewController returns a new student controller
-func NewController(clientset kubernetes.Interface,
+// NewPacketFilterController returns a new student controller
+func NewPacketFilterController(clientset kubernetes.Interface,
 	pfclientset clientset.Interface,
-	pfinformer informer.PacketFilterInformer) *PacketFilterController  {
+	pfinformer informer.PacketFilterInformer) *PacketFilterController {
 
 	utilruntime.Must(pfscheme.AddToScheme(pfscheme.Scheme))
 	klog.Info("Creating event broadcaster")
@@ -56,22 +56,22 @@ func NewController(clientset kubernetes.Interface,
 		Interface: clientset.CoreV1().Events(""),
 	})
 
-	recorder := eventBroadcaster.NewRecorder(pfscheme.Scheme,corev1.EventSource{
+	recorder := eventBroadcaster.NewRecorder(pfscheme.Scheme, corev1.EventSource{
 		Component: controllerName,
 	})
 
 	controller := &PacketFilterController{
 		kubeclinetset: clientset,
-		pfclientset: pfclientset,
-		pflister: pfinformer.Lister(),
-		pfSynced: pfinformer.Informer().HasSynced,
-		workqueue: workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
-		recorder: recorder,
+		pfclientset:   pfclientset,
+		pflister:      pfinformer.Lister(),
+		pfSynced:      pfinformer.Informer().HasSynced,
+		workqueue:     workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
+		recorder:      recorder,
 	}
 	klog.Info("Setting up event handlers")
 
 	pfinformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: controller.enqueuePacketFilter,
+		AddFunc:    controller.enqueuePacketFilter,
 		UpdateFunc: controller.updatePacketFilter,
 		DeleteFunc: controller.enqueuePacketFilterDelete,
 	})
@@ -79,21 +79,21 @@ func NewController(clientset kubernetes.Interface,
 	return controller
 }
 
-func (c *PacketFilterController) Run(threadiness int, stopCh <-chan struct{}) error  {
+func (c *PacketFilterController) Run(threadiness int, stopCh <-chan struct{}) error {
 	defer utilruntime.HandleCrash()
 	defer c.workqueue.ShutDown()
 
 	klog.Info("starting controller, waiting for cache synced")
-	if ok := cache.WaitForCacheSync(stopCh,c.pfSynced); !ok {
+	if ok := cache.WaitForCacheSync(stopCh, c.pfSynced); !ok {
 		return fmt.Errorf("failed to wait for caches to sync")
 	}
 	klog.Info("start workers")
-	for i:=0 ;i < threadiness; i++ {
-		go wait.Until(c.runWorker,time.Second,stopCh)
+	for i := 0; i < threadiness; i++ {
+		go wait.Until(c.runWorker, time.Second, stopCh)
 	}
 
 	<-stopCh
-	klog.Infof("%s and all works stopped",controllerName)
+	klog.Infof("%s and all works stopped", controllerName)
 	return nil
 }
 
@@ -104,7 +104,7 @@ func (c *PacketFilterController) runWorker() {
 }
 
 func (c *PacketFilterController) processNextWorkItem() bool {
-	obj,shutdown := c.workqueue.Get()
+	obj, shutdown := c.workqueue.Get()
 	if shutdown {
 		return false
 	}
@@ -115,19 +115,19 @@ func (c *PacketFilterController) processNextWorkItem() bool {
 		var ok bool
 
 		// get changed resource's key from queue
-		if key,ok = obj.(string); !ok {
+		if key, ok = obj.(string); !ok {
 			c.workqueue.Forget(obj)
-			utilruntime.HandleError(fmt.Errorf("expected string in workqueue but got %#v",obj))
+			utilruntime.HandleError(fmt.Errorf("expected string in workqueue but got %#v", obj))
 			return nil
 		}
 
 		// process business
-		if err := c.syncHandler(key);err != nil {
-			return fmt.Errorf("error syncing %s: %s",key,err.Error())
+		if err := c.syncHandler(key); err != nil {
+			return fmt.Errorf("error syncing %s: %s", key, err.Error())
 		}
 
 		c.workqueue.Forget(obj)
-		klog.Infof("Successfully synced %s",key)
+		klog.Infof("Successfully synced %s", key)
 		return nil
 	}(obj)
 
@@ -143,12 +143,12 @@ func (c *PacketFilterController) syncHandler(key string) error {
 	// Convert the namespace/name string into a distinct namespace and name
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("invalid resource key: %s",key))
+		utilruntime.HandleError(fmt.Errorf("invalid resource key: %s", key))
 		return nil
 	}
 
 	// get Object from cache
-	packetfilter,err := c.pflister.PacketFilters(namespace).Get(name)
+	packetfilter, err := c.pflister.PacketFilters(namespace).Get(name)
 	if err != nil {
 		// if object was deleted
 		if errors.IsNotFound(err) {
@@ -156,30 +156,30 @@ func (c *PacketFilterController) syncHandler(key string) error {
 			// TODO:delete logic....
 			return nil
 		}
-		utilruntime.HandleError(fmt.Errorf("failed to list packetfilter by: %s %s",namespace,name))
+		utilruntime.HandleError(fmt.Errorf("failed to list packetfilter by: %s %s", namespace, name))
 		return err
 	}
 
-	klog.Infof("this is the expect status of this Object: %#v",packetfilter)
+	klog.Infof("this is the expect status of this Object: %#v", packetfilter)
 	//TODO: The actual status is obtained from the business level.
 	//TODO: The actual status should be compared with the expected status,
 	//TODO: and the response should be made according to the difference
 
-	c.recorder.Event(packetfilter,corev1.EventTypeNormal,SuccessSynced,MessageResourceSynced)
+	c.recorder.Event(packetfilter, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
 
 	return nil
 }
 
 // add event
 // data should be put in cache first and the put in queue
-func (c *PacketFilterController) enqueuePacketFilter(obj interface{})  {
+func (c *PacketFilterController) enqueuePacketFilter(obj interface{}) {
 	var (
 		key string
 		err error
 	)
 
 	// make keys for API Object in the format <namespace>/<name>
-	if key,err = cache.MetaNamespaceKeyFunc(obj);err != nil {
+	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
 		utilruntime.HandleError(err)
 		return
 	}
@@ -200,13 +200,13 @@ func (c *PacketFilterController) updatePacketFilter(oldObj, newObj interface{}) 
 }
 
 // delete event
-func (c *PacketFilterController) enqueuePacketFilterDelete(obj interface{})  {
+func (c *PacketFilterController) enqueuePacketFilterDelete(obj interface{}) {
 	var (
 		key string
 		err error
 	)
 
-	key,err = cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
+	key, err = cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 	if err != nil {
 		utilruntime.HandleError(err)
 		return
